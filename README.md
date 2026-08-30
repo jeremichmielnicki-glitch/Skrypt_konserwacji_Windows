@@ -48,6 +48,12 @@ Automatyczny skrypt w języku PowerShell przeznaczony do kompleksowej konserwacj
 
 ---
 
+## Naprawianie błędów
+
+1. Zawieszanie się programu w losowym momencie. PowerShell posiada funkcję **Tryb Szybkiej Edycji**. Powoduje to zatrzymanie programu po naciśnięciu myszą lub zaznaczeniu fragmentu tekstu. Aby wznowić program, należy nacisnąć ENTER. Można też wyłączyć tą opcję poprzez naciśnięcie PPM na górny pasek PowerShell > Właściwości > Tryb Szybkiej Edycji > Wyłącz
+
+---
+
 ## Licencja
 
 Ten projekt jest udostępniany na licencji `MIT` — możesz go swobodnie używać, modyfikować i rozpowszechniać.
