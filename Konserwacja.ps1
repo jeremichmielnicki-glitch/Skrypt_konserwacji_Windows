@@ -1,7 +1,7 @@
-﻿# =====================================================================
+# =====================================================================
 # Skrypt automatycznej konserwacji systemu windows za pomocą PowerShell
 # Przed uruchomieniem skryptu przeczytaj plik README.md
-# Wersja 1.0   21.08.2026
+# Wersja 1.1   30.08.2026
 # Autorem skryptu jest Jeremiasz Chmielnicki
 # =====================================================================
 
@@ -62,11 +62,12 @@ try {
 $currentStep++
 Write-Progress -Activity "Konserwacja Systemu" -Status "Krok $currentStep/${totalSteps}: Usuwanie starych aktualizacji (WinSxS)" -PercentComplete (($currentStep / $totalSteps) * 100)
 Write-Log "[2/8] Usuwanie starych kopii aktualizacji Windows (WinSxS)..." -Color Yellow
-$dismClean = Start-Process -FilePath "dism.exe" -ArgumentList "/Online /Cleanup-Image /StartComponentCleanup" -NoNewWindow -Wait -PassThru
-if ($dismClean.ExitCode -eq 0) {
+
+dism.exe /Online /Cleanup-Image /StartComponentCleanup
+if ($LASTEXITCODE -eq 0) {
     Write-Log " -> Czyszczenie WinSxS zakończone sukcesem." -Color Green
 } else {
-    Write-Log " -> DISM StartComponentCleanup kod: $($dismClean.ExitCode)" -Color DarkYellow
+    Write-Log " -> DISM StartComponentCleanup kod: $LASTEXITCODE" -Color DarkYellow
 }
 
 # --- KROK 3: Czyszczenie DNS ---
@@ -85,22 +86,24 @@ try {
 $currentStep++
 Write-Progress -Activity "Konserwacja Systemu" -Status "Krok $currentStep/${totalSteps}: Naprawa obrazu systemu DISM" -PercentComplete (($currentStep / $totalSteps) * 100)
 Write-Log "[4/8] Naprawa obrazu systemu Windows (DISM RestoreHealth)..." -Color Yellow
-$dismRestore = Start-Process -FilePath "dism.exe" -ArgumentList "/Online /Cleanup-Image /RestoreHealth" -NoNewWindow -Wait -PassThru
-if ($dismRestore.ExitCode -eq 0) {
+
+dism.exe /Online /Cleanup-Image /RestoreHealth
+if ($LASTEXITCODE -eq 0) {
     Write-Log " -> Obraz systemu został pomyślnie zweryfikowany/naprawiony." -Color Green
 } else {
-    Write-Log " -> DISM zgłosił problemy (Kod wyjścia: $($dismRestore.ExitCode))." -Color DarkYellow
+    Write-Log " -> DISM zgłosił problemy (Kod wyjścia: $LASTEXITCODE)." -Color DarkYellow
 }
 
 # --- KROK 5: Skanowanie SFC ---
 $currentStep++
 Write-Progress -Activity "Konserwacja Systemu" -Status "Krok $currentStep/${totalSteps}: Skanowanie i naprawa plików SFC" -PercentComplete (($currentStep / $totalSteps) * 100)
 Write-Log "[5/8] Skanowanie spójności plików systemowych (SFC /scannow)..." -Color Yellow
-$sfc = Start-Process -FilePath "sfc.exe" -ArgumentList "/scannow" -NoNewWindow -Wait -PassThru
-if ($sfc.ExitCode -eq 0) {
+
+sfc.exe /scannow
+if ($LASTEXITCODE -eq 0) {
     Write-Log " -> Skanowanie SFC zakończone sukcesem." -Color Green
 } else {
-    Write-Log " -> SFC zakończył działanie z kodem: $($sfc.ExitCode)" -Color DarkYellow
+    Write-Log " -> SFC zakończył działanie z kodem: $LASTEXITCODE" -Color DarkYellow
 }
 
 # --- KROK 6: Skanowanie CHKDSK ---
@@ -112,11 +115,12 @@ $drives = Get-Volume | Where-Object { $_.DriveLetter -and $_.FileSystem -eq "NTF
 foreach ($drive in $drives) {
     $letter = $drive.DriveLetter
     Write-Log " -> Skanowanie partycji ${letter}: ..." -Color Gray
-    $chkdsk = Start-Process -FilePath "chkdsk.exe" -ArgumentList "$($letter): /scan" -NoNewWindow -Wait -PassThru
-    if ($chkdsk.ExitCode -eq 0) {
+    
+    chkdsk.exe "$($letter):" /scan
+    if ($LASTEXITCODE -eq 0) {
         Write-Log " -> Dysk ${letter}: brak błędów struktury plików." -Color Green
     } else {
-        Write-Log " -> Dysk ${letter}: CHKDSK zwrócił kod $($chkdsk.ExitCode)." -Color DarkYellow
+        Write-Log " -> Dysk ${letter}: CHKDSK zwrócił kod $LASTEXITCODE." -Color DarkYellow
     }
 }
 
@@ -151,10 +155,26 @@ Write-Log "====================================================" -Color Cyan
 # Ukrycie paska postępu
 Write-Progress -Activity "Konserwacja Systemu" -Completed
 
-# Off-timer do restartu
-Write-Host "`nKomputer zostanie uruchomiony ponownie za 15 sekund." -ForegroundColor Red
-Write-Host "Naciśnij CTRL+C w tym oknie, aby ANULOWAĆ restart!`n" -ForegroundColor Yellow
+# Interactive Odliczanie do restartu
+Write-Host "`n[!] Komputer zostanie zrestartowany za 15 sekund." -ForegroundColor Red
+Write-Host "Naciśnij DOWOLNY KLAWISZ, aby ANULOWAĆ automatyczny restart...`n" -ForegroundColor Yellow
 
-shutdown.exe /r /t 15 /c "Automatyczna konserwacja systemu została zakończona."
+$cancelRestart = $false
 
-Start-Sleep -Seconds 15
+for ($i = 15; $i -gt 0; $i--) {
+    Write-Host -NoNewline "`rRestart za $i sek. (Naciśnij klawisz, aby anulować)... "
+    if ([Console]::KeyAvailable) {
+        [Console]::ReadKey($true) | Out-Null
+        $cancelRestart = $true
+        break
+    }
+    Start-Sleep -Seconds 1
+}
+
+if ($cancelRestart) {
+    Write-Host "`n`n[OK] Anulowano ponowne uruchomienie komputera." -ForegroundColor Green
+    Write-Log " -> Ponowne uruchomienie systemu zostało anulowane przez użytkownika." -Color Yellow
+} else {
+    Write-Host "`n`n[!] Inicjowanie ponownego uruchomienia..." -ForegroundColor Red
+    shutdown.exe /r /t 0 /c "Automatyczna konserwacja systemu została zakończona."
+}
