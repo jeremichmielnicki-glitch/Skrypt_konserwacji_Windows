@@ -56,6 +56,6 @@ Automatyczny skrypt w języku PowerShell przeznaczony do kompleksowej konserwacj
 
 ## Licencja
 
-Ten projekt jest udostępniany na licencji `MIT` — możesz go swobodnie używać, modyfikować i rozpowszechniać.
-Autor: Jeremiasz Chmielnicki
-Kontakt/portfolio: github.com/jeremichmielnicki-glitch
+Ten projekt jest udostępniany na licencji `MIT` — możesz go swobodnie używać, modyfikować i rozpowszechniać.  
+Autor: Jeremiasz Chmielnicki  
+Kontakt/portfolio: github.com/jeremichmielnicki-glitch  
